@@ -35,6 +35,7 @@ public class User {
     public final static HashMap<Integer, String> USERGROUP = new HashMap<Integer, String>() {{
         put(1, "普通用户");
         put(2, "经理");
+        put(3, "后勤");
         put(0, "系统管理员");
     }};
 

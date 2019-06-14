@@ -43,5 +43,20 @@ public class DeviceController {
             return new FailureInfo(4000, "开门失败，请重试！");
         }
     }
+
+    @ApiOperation(value = "开启空调")
+    @RequestMapping(value = "/airCondition", method = RequestMethod.POST)
+    @ResponseBody
+    public Object airCondition() {
+        return null;
+    }
+
+    @ApiOperation(value = "开启投影仪")
+    @RequestMapping(value = "/projector", method = RequestMethod.POST)
+    @ResponseBody
+    public Object projector() {
+        return null;
+    }
+
 }
 

@@ -82,8 +82,12 @@ public class ConferenceController {
                 if (conferenceList1.size() != 0) {
                     // 如果当前时间段有回忆则检查这些会议是否都被驳回，如果有未被驳回的无法约定
                     for (int i = 0; i < conferenceList1.size(); i++) {
+                        // 判断状态是否为正常会议
                         if (conferenceList1.get(i).getStatus() == 1) {
-                            return new FailureInfo(3001, "当前时段有会，无法预订！");
+                            // 判断有会的是否是当前房间
+                            if (conferenceList1.get(i).getRoom().equals(conference.getRoom())) {
+                                return new FailureInfo(3001, "当前时段有会，无法预订！");
+                            }
                         }
                     }
                 }
