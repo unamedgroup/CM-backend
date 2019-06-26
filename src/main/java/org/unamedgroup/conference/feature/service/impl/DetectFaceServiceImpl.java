@@ -13,6 +13,7 @@ import org.unamedgroup.conference.service.UserManageService;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.Buffer;
 import java.util.Base64;
 import java.util.Vector;
 
@@ -40,16 +41,13 @@ public class DetectFaceServiceImpl implements IDetectFaceService {
      */
     @Override
     public int detectFeature(File file, Integer userID) {
-
-        if (userManageService == null) {
-            userManageService = new org.unamedgroup.conference.service.impl.UserManageServiceImpl();
-        }
-        InputStream inputStream = null;
+        InputStream inputStream;
         try {
             inputStream = new FileInputStream(file);
-            detectFeature(inputStream, userID);
+            BufferedImage bufferedImage = ImageIO.read(inputStream);
+            detectFeature(bufferedImage, userID);
             return 0;
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             System.out.println(e.toString());
             return -1;
         }
@@ -58,19 +56,13 @@ public class DetectFaceServiceImpl implements IDetectFaceService {
     /**
      * 根据图片信息提取到人脸的特征信息
      *
-     * @param inputStream
+     * @param bufferedImage
      * @return faceFeature
      */
     @Override
-    public int detectFeature(InputStream inputStream, Integer userID) {
+    public int detectFeature(BufferedImage bufferedImage, Integer userID) {
         try {
-            BufferedImage bufferedImage = ImageIO.read(inputStream);
-            Vector<Box> boxes = mtCnn.detectFaces(bufferedImage,40);
-            if(boxes.size() == 0){
-                return -1;
-            }
-            BufferedImage face = Utils.getFace(bufferedImage, boxes.get(0).box);
-            float[][] result = faceNet.getFeature(face);
+            float[][] result = this.commonDetect(bufferedImage);
             byte[] bytes = Utils.floatArrayToByteArray(result);
 
             System.out.println("转换前特征值：" + bytes);
@@ -87,12 +79,12 @@ public class DetectFaceServiceImpl implements IDetectFaceService {
     /**
      * 根据人脸的特征信息进行人脸匹配
      *
-     * @param inputStream
+     * @param bufferedImage
      * @param userID
      * @return
      */
     @Override
-    public double compareFace(InputStream inputStream, Integer userID) {
+    public double compareFace(BufferedImage bufferedImage, Integer userID) {
         try {
             //从数据库中读取人脸特征信息
             String sourceData = userManageService.getUserFeature(userID);
@@ -104,18 +96,9 @@ public class DetectFaceServiceImpl implements IDetectFaceService {
             //奖字符串转换成byte数组
             byte[] data = Base64.getDecoder().decode(sourceData);
             float[][] faceFeature = Utils.byteArrayToFloatArray(data);
-
-            System.out.println("转换后特征值：" + data);
-            BufferedImage bufferedImage = ImageIO.read(inputStream);
-            Vector<Box> boxes = mtCnn.detectFaces(bufferedImage,40);
-            if(boxes.size() == 0){
-                return -1;
-            }
-            BufferedImage face = Utils.getFace(bufferedImage, boxes.get(0).box);
-
-            float[][] testFaceFeature = faceNet.getFeature(face);
-            float result = faceNet.compareFeature(faceFeature, testFaceFeature);
-            return result;
+            System.out.println("转换后特征值：" + data.toString());
+            float[][] testFaceFeature = this.commonDetect(bufferedImage);
+            return faceNet.compareFeature(faceFeature, testFaceFeature);
         } catch (IOException e) {
             System.err.println("匹配人脸出错，请检查" + e.toString());
             return -1;
@@ -125,20 +108,35 @@ public class DetectFaceServiceImpl implements IDetectFaceService {
     /**
      * 根据人脸的特征信息进行人脸匹配
      *
-     * @param file
-     * @param userID
-     * @return
+     * @param file 图片文件
+     * @param userID 用户ID
+     * @return double 人脸比较相似度
      */
     @Override
     public double compareFace(File file, Integer userID) {
-
         InputStream inputStream = null;
         try {
             inputStream = new FileInputStream(file);
-        } catch (FileNotFoundException e) {
+            BufferedImage bufferedImage = ImageIO.read(inputStream);
+            return compareFace(bufferedImage, userID);
+        } catch (IOException e) {
             System.out.println(e.toString());
         }
-        return compareFace(inputStream, userID);
+        return -1.0;
     }
 
+
+    /**
+     * @param bufferedImage 输入的图片流
+     * @return 特征信息
+     * @throws IOException 图片处理异常
+     */
+    private float[][] commonDetect(BufferedImage bufferedImage) throws IOException {
+        Vector<Box> boxes = mtCnn.detectFaces(bufferedImage,25);
+        if(boxes.size() == 0){
+            return null;
+        }
+        BufferedImage face = Utils.getFace(bufferedImage, boxes.get(0).box);
+        return faceNet.getFeature(face);
+    }
 }

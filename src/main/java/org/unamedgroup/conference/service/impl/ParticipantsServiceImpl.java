@@ -14,13 +14,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @Author: 白振宇
+ * @Author: 白振宇、周韬
  * @Date： 2019/5/12 22:16
  */
 @Service
 public class ParticipantsServiceImpl implements ManagingAttendeesService {
     @Autowired
     ParticipantsRepository participantsRepository;
+
     @Autowired
     UserRepository userRepository;
 
@@ -29,12 +30,12 @@ public class ParticipantsServiceImpl implements ManagingAttendeesService {
     public Boolean modifyParticipants(String userIds, Integer conferenceID) {
         List<Integer> userIdList = new ArrayList<>();
         String[] userIdArray = userIds.split(",");
-        for (int i = 0; i < userIdArray.length; i++) {
+        for(int i=0; i<userIdArray.length; i++) {
             userIdList.add(Integer.valueOf(userIdArray[i]));
         }
         try {
             participantsRepository.removeBySequenceID(conferenceID);
-            for (Integer userId : userIdList) {
+            for(Integer userId : userIdList) {
                 Participants participants = new Participants();
                 participants.setUserID(userId);
                 participants.setSequenceID(conferenceID);
@@ -50,11 +51,25 @@ public class ParticipantsServiceImpl implements ManagingAttendeesService {
     public List<ReturnUser> getParticipants(Integer conferenceID) {
         List<Participants> participantsList = participantsRepository.findBySequenceID(conferenceID);
         List<ReturnUser> userList = new ArrayList<>();
-        for (Participants participants : participantsList) {
+        for(Participants participants : participantsList) {
             User user = userRepository.getUserByUserID(participants.getUserID());
             ReturnUser returnUser = new ReturnUser(user);
             userList.add(returnUser);
         }
         return userList;
+    }
+
+    /**
+     * 获取会议室参与者的ID集合
+     * @param conferenceID
+     * @return userIDList 参与者ID集合
+     */
+    public List<Integer> getParticipantsID(Integer conferenceID){
+        List<Participants> participantsList = participantsRepository.findBySequenceID(conferenceID);
+        List<Integer> userIDList = new ArrayList<>();
+        for (Participants participant: participantsList) {
+            userIDList.add(participant.getUserID());
+        }
+        return userIDList;
     }
 }

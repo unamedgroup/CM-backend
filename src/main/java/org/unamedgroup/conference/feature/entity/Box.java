@@ -10,10 +10,8 @@ import static java.lang.Math.max;
 
 
 public class Box {
-    // left:box[0],top:box[1],right:box[2],bottom:box[3]
     public int[] box;
     public float score;
-    // bounding box regression
     public float[] bbr;
     public boolean deleted;
 
@@ -47,25 +45,41 @@ public class Box {
         return box[3] - box[1] + 1;
     }
 
-    //面积
+
+    /**
+     *  面积
+     * @author zhoutao
+     * @date 2019/05/31
+     */
     public int area() {
         return width() * height();
     }
 
-    //Bounding Box Regression
+    /**
+     * Bounding Box Regression， 将偏移并入总的坐标中
+     * @author zhoutao
+     * @date 2019/05/31
+     */
     public void calibrate() {
+        // 获取人脸框的宽与高
         int w = box[2] - box[0] + 1;
         int h = box[3] - box[1] + 1;
+        // 偏移并入人脸框
         box[0] = (int) (box[0] + w * bbr[0]);
         box[1] = (int) (box[1] + h * bbr[1]);
         box[2] = (int) (box[2] + w * bbr[2]);
         box[3] = (int) (box[3] + h * bbr[3]);
+        // 修改偏移全部为0
         for (int i = 0; i < 4; i++) {
             bbr[i] = 0.0f;
         }
     }
 
-    //当前box转为正方形
+    /**
+     * 将当前的Box转换成正方形
+     * @author zhoutao
+     * @date 2019/05/31
+     */
     public void toSquareShape() {
         int w = width();
         int h = height();
@@ -78,8 +92,12 @@ public class Box {
         }
     }
 
-    //防止边界溢出，并维持square大小
-    public void limit_square(int w, int h) {
+    /**
+     * 防止边界溢出，并维持square大小
+     * @author zhoutao
+     * @date 2019/05/31
+     */
+    public void limitSquare(int w, int h) {
         if (box[0] < 0 || box[1] < 0) {
             int len = max(-box[0], -box[1]);
             box[0] += len;
@@ -89,35 +107,6 @@ public class Box {
             int len = max(box[2] - w + 1, box[3] - h + 1);
             box[2] -= len;
             box[3] -= len;
-        }
-    }
-
-    public void limit_square2(int w, int h) {
-        if (width() > w) {
-            box[2] -= width() - w;
-        }
-        if (height() > h) {
-            box[3] -= height() - h;
-        }
-        if (box[0] < 0) {
-            int sz = -box[0];
-            box[0] += sz;
-            box[2] += sz;
-        }
-        if (box[1] < 0) {
-            int sz = -box[1];
-            box[1] += sz;
-            box[3] += sz;
-        }
-        if (box[2] >= w) {
-            int sz = box[2] - w + 1;
-            box[2] -= sz;
-            box[0] -= sz;
-        }
-        if (box[3] >= h) {
-            int sz = box[3] - h + 1;
-            box[3] -= sz;
-            box[1] -= sz;
         }
     }
 }

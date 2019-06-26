@@ -16,8 +16,12 @@ import org.springframework.web.bind.annotation.*;
 import org.unamedgroup.conference.feature.service.IDetectFaceService;
 import org.unamedgroup.conference.security.JWTUtil;
 import org.unamedgroup.conference.service.GeneralService;
+import org.unamedgroup.conference.service.impl.FaceServiceImpl;
+import org.unamedgroup.conference.service.impl.GeneralServiceImpl;
 
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.util.Date;
 import java.util.List;
@@ -40,7 +44,7 @@ public class BioFeatureController {
     @Autowired
     UserRepository userRepository;
     @Autowired
-    GeneralService generalService;
+    FaceServiceImpl faceServiceImpl;
 
     /**
      * 人脸获取
@@ -62,19 +66,22 @@ public class BioFeatureController {
         if (subject.isAuthenticated() == false) {
             return new FailureInfo();
         }
+        // 获取用户ID
         String phone = JWTUtil.getPhoneNumber(subject.getPrincipal().toString());
         Integer userID = userRepository.getUserByPhoneNumber(phone).getUserID();
-
         try {
+            // 图片base64转流
             InputStream inputStream = Utils.base64InputStream(imgStr);
-            int result = detectFaceService.detectFeature(inputStream, userID);
+            // 流转图片
+            BufferedImage bufferedImage = ImageIO.read(inputStream);
+            // 人脸检测
+            int result = detectFaceService.detectFeature(bufferedImage, userID);
             if (inputStream != null) {
                 inputStream.close();
-//                return new FailureInfo(4003, "输入数据出错" );
             }
             if (result == -1) {
-                System.err.println("找不到人脸信息");
-                return new FailureInfo(4000,"找不到人脸信息" );
+                System.err.println("找不到人脸信息，请重试");
+                return new FailureInfo(4000,"找不到人脸信息，请重试" );
             }
             return new SuccessInfo("设置人脸成功" );
         } catch (Exception e) {
@@ -104,19 +111,30 @@ public class BioFeatureController {
         try {
             // 处理图片信息
             InputStream inputStream = Utils.base64InputStream(imgStr);
+            BufferedImage bufferedImage = ImageIO.read(inputStream);
             //现在时间
             Date nowTime = new Date();
             //半个小时后时间
             Date afterHalfHour = new Date(nowTime.getTime() + (long)30*60*1000);
-            List<Conference> conferenceList = generalService.getConferencesByLocationAndDate(roomID, nowTime, afterHalfHour);
-            if(conferenceList.isEmpty()){
+            // 获取会议所有的参与者
+            List<Integer> userIDList = faceServiceImpl.getUserIDFromConference(roomID, nowTime, afterHalfHour);
+            if(userIDList.isEmpty() || userIDList == null ){
                 return new FailureInfo(4003,"当前时间没有会议" );
             }
-            Double result = result = detectFaceService.compareFace(inputStream, conferenceList.get(0).getUser());
+            Double result = -1.0;
+            for (int i=0;i<userIDList.size();i++) {
+                // 匹配人脸
+                Double temp =  detectFaceService.compareFace(bufferedImage, userIDList.get(i));
+                if(result < temp){
+                    result = temp;
+                }
+            }
+            // 所有的输出都是-1，则是没有检测到人脸
             if (result == -1) {
                 System.err.println("找不到人脸信息");
                 return new FailureInfo(4000,"找不到人脸信息" );
             }
+            // 相似度大于0.8认为是同一个人
             if (result >= 0.8){
                 return new SuccessInfo("人脸匹配成功" );
             }else{
