@@ -1,26 +1,30 @@
 package org.unamedgroup.conference.controller;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import io.swagger.annotations.*;
 import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.subject.Subject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 import org.unamedgroup.conference.dao.RoomRepository;
 import org.unamedgroup.conference.entity.Building;
 import org.unamedgroup.conference.entity.Conference;
 import org.unamedgroup.conference.entity.Room;
 import org.unamedgroup.conference.entity.temp.*;
-import org.unamedgroup.conference.service.GuideQueryService;
-import org.unamedgroup.conference.service.QuickCheckService;
-import org.unamedgroup.conference.service.RelevanceQueryService;
-import org.unamedgroup.conference.service.RoomManageService;
+import org.unamedgroup.conference.service.*;
 
 import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * RoomController
@@ -45,6 +49,11 @@ public class RoomController {
     RoomRepository roomRepository;
     @Autowired
     RelevanceQueryService relevanceQueryService;
+    @Autowired
+    GeneralService generalService;
+
+    @Value("${server.python.url}")
+    private String python_url;
 
     @ApiOperation(value = "获取空闲会议室api", protocols = "http"
             , produces = "application/json", consumes = "application/json"
@@ -169,17 +178,22 @@ public class RoomController {
 
     @GetMapping(value = "guide")
     public Object guide(Date start, Date end, Room room, Building building) {
-        room.setBuilding(building);
+        try{
+            room.setBuilding(building);
 //        room = guideQueryService.locationShift(room);
-        List<Room> roomList = guideQueryService.screenRoomList(room);
-        roomList = guideQueryService.sortRoomByFreeIndex(roomList, start, end);
-        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-        String date = simpleDateFormat.format(start);
-        List<RoomTime> roomTimeList = guideQueryService.roomTable(roomList, date);
-        if(roomTimeList!=null) {
-            return new SuccessInfo(roomTimeList);
-        } else {
-            return new FailureInfo(6001, "处理房间填充失败!");
+            List<Room> roomList = guideQueryService.screenRoomList(room);
+            roomList = guideQueryService.sortRoomByFreeIndex(roomList, start, end);
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String date = simpleDateFormat.format(start);
+            List<RoomTime> roomTimeList = guideQueryService.roomTable(roomList, date);
+            if(roomTimeList!=null) {
+                return new SuccessInfo(roomTimeList);
+            } else {
+                return new FailureInfo(6001, "处理房间填充失败!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new FailureInfo(6001, "处理房间填充失败！");
         }
     }
 
@@ -288,6 +302,39 @@ public class RoomController {
         } catch (Exception e) {
             e.printStackTrace();
             return new FailureInfo(6010, "模糊匹配异常！");
+        }
+    }
+
+    @GetMapping(value = "intelligence")
+    public Object intelligence() {
+        try {
+            Subject subject = SecurityUtils.getSubject();
+            if(!subject.isAuthenticated()) {
+                return new FailureInfo();
+            }
+            Integer userID = generalService.getLoginUser().getUserID();
+            RestTemplate restTemplate = new RestTemplate();
+
+            String url = python_url;
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+            MultiValueMap<String, String> map= new LinkedMultiValueMap<>();
+            map.add("userID", String.valueOf(userID));
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(map, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity( url, request , String.class );
+            Map maps = (Map) JSON.parse(response.getBody());
+            assert maps != null;
+            String jsonStr = JSONObject.toJSONString(maps.get("data"));
+            List<Integer> list = JSONObject.parseArray(jsonStr,  Integer.class);
+            List<Room> roomList = new ArrayList<>();
+            for(Integer i : list) {
+                roomList.add(roomRepository.getRoomByRoomID(i));
+            }
+            return new SuccessInfo(roomList);
+        }catch (Exception e) {
+            e.printStackTrace();
+            return new FailureInfo(6011, "智能推荐失败！");
         }
     }
 }

@@ -50,6 +50,13 @@ public interface RoomRepository extends CrudRepository<Room, Integer> {
     Room getRoomByRoomID(Integer roomID);
 
     /**
+     * 根据房间号列表返房间信息列表
+     * @param rooms 房间号列表
+     * @return 房间实体列表
+     */
+    List<Room> getRoomsByRoomIDIn(List rooms);
+
+    /**
      * 返回所有房间
      * 请慎用此方法！
      *

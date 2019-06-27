@@ -616,6 +616,11 @@ public class RoomServiceImpl implements QuickCheckService, GuideQueryService, Re
     }
 
     @Override
+    public List<Room> getRoomList(List<Integer> rooms) {
+        return roomRepository.getRoomsByRoomIDIn(rooms);
+    }
+
+    @Override
     public List<Room> roomByBuilding(Building building) {
         // 根据楼宇返回房间
         return roomRepository.getRoomsByBuilding(building);

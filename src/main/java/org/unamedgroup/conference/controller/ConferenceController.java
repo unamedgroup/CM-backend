@@ -72,7 +72,9 @@ public class ConferenceController {
 
         //会议预定逻辑
         try {
-            if (conference == null) {
+            if (conference.getRoom() == null) {
+                return new FailureInfo(3000, "传入的会议参数无效！");
+            }else if (conference == null) {
                 return new FailureInfo(3000, "传入的会议参数无效！");
             } else {
                 // 当前会议时间是否有会，如果无会议，继续

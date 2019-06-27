@@ -99,4 +99,11 @@ public interface GuideQueryService {
      * @return 会议室时间块列表（分页后，含总页数）
      */
     PageRoomTime pageRoomTimeList(List<RoomTime> roomTimeList, Integer pageCurrent, Integer pageSize);
+
+    /**
+     * 会议室id列表获取会议室详情列表
+     * @param rooms 会议室id列表
+     * @return 会议室详情列表
+     */
+    List<Room> getRoomList(List<Integer> rooms);
 }
